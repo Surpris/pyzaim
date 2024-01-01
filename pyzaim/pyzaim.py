@@ -1,3 +1,4 @@
+from getpass import getpass
 import os
 import datetime
 import time
@@ -8,51 +9,74 @@ from selenium.webdriver import Chrome, ChromeOptions, Remote
 from selenium.webdriver.common.keys import Keys
 from tqdm import tqdm
 
-request_token_url = "https://api.zaim.net/v2/auth/request"
-authorize_url = "https://auth.zaim.net/users/auth"
-access_token_url = "https://api.zaim.net/v2/auth/access"
-callback_uri = "https://www.zaim.net/"
+REQUEST_TOKEN_URL: str = 'https://api.zaim.net/v2/auth/request'
+AUTHORIZE_URL: str = 'https://auth.zaim.net/users/auth'
+ACCESS_TOKEN_URL: str = 'https://api.zaim.net/v2/auth/access'
+CALLBACK_URL: str = 'https://www.zaim.net/'
+
+ZAIM_CONSUMER_ID: str = 'ZAIM_CONSUMER_ID'
+ZAIM_CONSUMER_SECRET: str = 'ZAIM_CONSUMER_SECRET'
+ZAIM_ACCESS_TOKEN: str = 'ZAIM_ACCESS_TOKEN'
+ZAIM_ACCESS_TOKEN_SECRET: str = 'ZAIM_ACCESS_TOKEN_SECRET'
+ZAIM_OAUTH_VERIFIER: str = 'ZAIM_OAUTH_VERIFIER'
 
 
 def get_access_token():
-    consumer_id = input("Please input consumer ID : ")
-    consumer_secret = input("Please input consumer secret : ")
-    print("\n")
+    """get the access token.
+    """
+    consumer_id = os.environ.get(ZAIM_CONSUMER_ID, None)
+    if consumer_id is None:
+        consumer_id = getpass("Please input consumer ID: ")
+        consumer_id = consumer_id.srtip()
+        os.environ[ZAIM_CONSUMER_ID] = consumer_id
+
+    consumer_secret = os.environ.get(ZAIM_CONSUMER_SECRET, None)
+    if consumer_secret is None:
+        consumer_secret = getpass("Please input consumer secret: ")
+        os.environ[ZAIM_CONSUMER_SECRET] = consumer_secret
 
     auth = OAuth1Session(
-        client_key=consumer_id, client_secret=consumer_secret, callback_uri=callback_uri
+        client_key=consumer_id,
+        client_secret=consumer_secret,
+        callback_uri=CALLBACK_URL
     )
 
-    auth.fetch_request_token(request_token_url)
+    auth.fetch_request_token(REQUEST_TOKEN_URL)
 
     # Redirect user to zaim for authorization
-    authorization_url = auth.authorization_url(authorize_url)
-    print("Please go here and authorize : ", authorization_url)
+    authorization_url = auth.authorization_url(AUTHORIZE_URL)
+    print("Please go here and authorize: ", authorization_url)
 
-    oauth_verifier = input("Please input oauth verifier : ")
+    oauth_verifier = input("Please input oauth verifier: ")
     access_token_res = auth.fetch_access_token(
-        url=access_token_url, verifier=oauth_verifier
+        url=ACCESS_TOKEN_URL, verifier=oauth_verifier
     )
-    access_token = access_token_res.get("oauth_token")
-    access_token_secret = access_token_res.get("oauth_token_secret")
-
-    print("\n")
-    print("access token : {}".format(access_token))
-    print("access token secret : {}".format(access_token_secret))
-    print("oauth verifier : {}".format(oauth_verifier))
+    os.environ[ZAIM_ACCESS_TOKEN] = access_token_res.get("oauth_token")
+    os.environ[ZAIM_ACCESS_TOKEN_SECRET] = access_token_res.get("oauth_token_secret")
+    os.environ[ZAIM_OAUTH_VERIFIER] = oauth_verifier
 
 
 class ZaimAPI:
     def __init__(
         self,
-        consumer_id,
-        consumer_secret,
-        access_token,
-        access_token_secret,
-        oauth_verifier,
+        consumer_id: str = None,
+        consumer_secret: str = None,
+        access_token: str = None,
+        access_token_secret: str = None,
+        oauth_verifier: str = None,
     ):
-        self.consumer_id = consumer_id
-        self.consumer_secret = consumer_secret
+        self._consumer_id = consumer_id
+        if self._consumer_id is None:
+            self._consumer_id = os.environ.get(ZAIM_CONSUMER_ID)
+        self._consumer_secret = consumer_secret
+        if self._consumer_secret is None:
+            self._consumer_secret = os.environ.get(ZAIM_CONSUMER_SECRET)
+        if access_token is None:
+            access_token = os.environ.get(ZAIM_ACCESS_TOKEN)
+        if access_token_secret is None:
+            access_token_secret = os.environ.get(ZAIM_ACCESS_TOKEN_SECRET)
+        if oauth_verifier is None:
+            oauth_verifier = os.environ.get(ZAIM_OAUTH_VERIFIER)
 
         self.verify_url = "https://api.zaim.net/v2/home/user/verify"
         self.money_url = "https://api.zaim.net/v2/home/money"
@@ -64,22 +88,22 @@ class ZaimAPI:
         self.account_url = "https://api.zaim.net/v2/home/account"
         self.currency_url = "https://api.zaim.net/v2/currency"
 
-        self.auth = OAuth1Session(
-            client_key=self.consumer_id,
-            client_secret=self.consumer_secret,
+        self._auth = OAuth1Session(
+            client_key=self._consumer_id,
+            client_secret=self._consumer_secret,
             resource_owner_key=access_token,
             resource_owner_secret=access_token_secret,
-            callback_uri=callback_uri,
+            callback_uri=CALLBACK_URL,
             verifier=oauth_verifier,
         )
 
         self._build_id_table()
 
     def verify(self):
-        return self.auth.get(self.verify_url).json()
+        return self._auth.get(self.verify_url).json()
 
     def get_data(self, params=None):
-        return self.auth.get(self.money_url, params=params).json()["money"]
+        return self._auth.get(self.money_url, params=params).json()["money"]
 
     def insert_payment_simple(
         self,
@@ -127,7 +151,7 @@ class ZaimAPI:
             data["name"] = name
         if place is not None:
             data["place"] = place
-        return self.auth.post(self.payment_url, data=data)
+        return self._auth.post(self.payment_url, data=data)
 
     def update_payment_simple(
         self,
@@ -186,10 +210,10 @@ class ZaimAPI:
             data["name"] = name
         if place is not None:
             data["place"] = place
-        return self.auth.put("{}/{}".format(self.payment_url, data_id), data=data)
+        return self._auth.put("{}/{}".format(self.payment_url, data_id), data=data)
 
     def delete_payment(self, data_id):
-        return self.auth.delete("{}/{}".format(self.payment_url, data_id))
+        return self._auth.delete("{}/{}".format(self.payment_url, data_id))
 
     def insert_income_simple(
         self, date, category, amount, to_account=None, comment=None, place=None
@@ -218,7 +242,7 @@ class ZaimAPI:
             data["comment"] = comment
         if place is not None:
             data["place"] = place
-        return self.auth.post(self.income_url, data=data)
+        return self._auth.post(self.income_url, data=data)
 
     def update_income_simple(
         self, data_id, date, category, amount, to_account=None, comment=None, place=None
@@ -255,10 +279,10 @@ class ZaimAPI:
             data["comment"] = comment
         if place is not None:
             data["place"] = place
-        return self.auth.put("{}/{}".format(self.income_url, data_id), data=data)
+        return self._auth.put("{}/{}".format(self.income_url, data_id), data=data)
 
     def delete_income(self, data_id):
-        return self.auth.delete("{}/{}".format(self.income_url, data_id))
+        return self._auth.delete("{}/{}".format(self.income_url, data_id))
 
     def insert_transfer_simple(
         self, date, amount, from_account, to_account, comment=None
@@ -281,7 +305,7 @@ class ZaimAPI:
         }
         if comment is not None:
             data["comment"] = comment
-        return self.auth.post(self.transfer_url, data=data)
+        return self._auth.post(self.transfer_url, data=data)
 
     def update_transfer_simple(
         self, data_id, date, amount, from_account, to_account, comment=None
@@ -305,10 +329,10 @@ class ZaimAPI:
         }
         if comment is not None:
             data["comment"] = comment
-        return self.auth.put("{}/{}".format(self.transfer_url, data_id), data=data)
+        return self._auth.put("{}/{}".format(self.transfer_url, data_id), data=data)
 
     def delete_transfer(self, data_id):
-        return self.auth.delete("{}/{}".format(self.transfer_url, data_id))
+        return self._auth.delete("{}/{}".format(self.transfer_url, data_id))
 
     def _build_id_table(self):
         self.genre_itos = {}
@@ -333,13 +357,13 @@ class ZaimAPI:
             self.account_stoi[a["name"]] = a["id"]
 
     def _get_account(self):
-        return self.auth.get(self.account_url).json()
+        return self._auth.get(self.account_url).json()
 
     def _get_category(self):
-        return self.auth.get(self.category_url).json()
+        return self._auth.get(self.category_url).json()
 
     def _get_genre(self):
-        return self.auth.get(self.genre_url).json()
+        return self._auth.get(self.genre_url).json()
 
 
 class ZaimCrawler:
