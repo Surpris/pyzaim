@@ -29,8 +29,9 @@ ZAIM_API_MONEY_TRANSFER_URL: str = f'{ZAIM_API_MONEY_URL}/transfer'
 
 # Home operation
 ZAIN_API_CATEGORY_URL: str = f'{ZAIM_API_HOME_URL}/category'
-ZAIM_API_CURRENCY_URL: str = f'{ZAIM_API_HOME_URL}/genre'
-ZAIM_API_CURRENCY_URL: str = f'{ZAIM_API_HOME_URL}/genre'
+ZAIM_API_GENRE_URL: str = f'{ZAIM_API_HOME_URL}/genre'
+ZAIM_API_ACCOUNT_URL: str = f'{ZAIM_API_HOME_URL}/account'
+ZAIM_API_CURRENCY_URL: str = f'{ZAIM_API_HOME_URL}/currency'
 
 # IDs
 ZAIM_CONSUMER_ID: str = 'ZAIM_CONSUMER_ID'
@@ -120,15 +121,6 @@ class ZaimAPI:
             access_token_secret = os.environ.get(ZAIM_ACCESS_TOKEN_SECRET)
         if oauth_verifier is None:
             oauth_verifier = os.environ.get(ZAIM_OAUTH_VERIFIER)
-
-        # ZAIM_API_MONEY_URL = 
-        # ZAIM_API_MONEY_PAYMENT_URL = 
-        # ZAIM_API_MONEY_INCOME_URL = 
-        # self.transfer_url = ""
-        self.category_url = "https://api.zaim.net/v2/home/category"
-        self.genre_url = "https://api.zaim.net/v2/home/genre"
-        self.account_url = "https://api.zaim.net/v2/home/account"
-        self.currency_url = "https://api.zaim.net/v2/currency"
 
         self._auth = OAuth1Session(
             client_key=self._consumer_id,
@@ -347,7 +339,7 @@ class ZaimAPI:
         }
         if comment is not None:
             data["comment"] = comment
-        return self._auth.post(self.transfer_url, data=data)
+        return self._auth.post(ZAIM_API_MONEY_TRANSFER_URL, data=data)
 
     def update_transfer_simple(
         self, data_id, date, amount, from_account, to_account, comment=None
@@ -371,10 +363,10 @@ class ZaimAPI:
         }
         if comment is not None:
             data["comment"] = comment
-        return self._auth.put("{}/{}".format(self.transfer_url, data_id), data=data)
+        return self._auth.put("{}/{}".format(ZAIM_API_MONEY_TRANSFER_URL, data_id), data=data)
 
     def delete_transfer(self, data_id):
-        return self._auth.delete("{}/{}".format(self.transfer_url, data_id))
+        return self._auth.delete("{}/{}".format(ZAIM_API_MONEY_TRANSFER_URL, data_id))
 
     def _build_id_table(self):
         self.genre_itos = {}
@@ -399,13 +391,13 @@ class ZaimAPI:
             self.account_stoi[a["name"]] = a["id"]
 
     def _get_account(self):
-        return self._auth.get(self.account_url).json()
+        return self._auth.get(ZAIM_API_ACCOUNT_URL).json()
 
     def _get_category(self):
-        return self._auth.get(self.category_url).json()
+        return self._auth.get(ZAIN_API_CATEGORY_URL).json()
 
     def _get_genre(self):
-        return self._auth.get(self.genre_url).json()
+        return self._auth.get(ZAIM_API_GENRE_URL).json()
 
 
 class ZaimCrawler:
