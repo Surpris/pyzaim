@@ -16,9 +16,9 @@ ZAIM_API_HOME_URL: str = f'{ZAIM_API_BASE_URL}/{ZAIM_API_VERSION}/home'
 ZAIM_CALLBACK_URL: str = 'https://www.zaim.net/'
 
 # Authorization
+ZAIM_API_AUTHORIZE_URL: str = f'https://auth.zaim.net/users/auth'
 ZAIM_API_REQUEST_TOKEN_URL: str = f'{ZAIM_API_BASE_URL}/{ZAIM_API_VERSION}/auth/request'
 ZAIM_API_ACCESS_TOKEN_URL: str = f'{ZAIM_API_BASE_URL}/{ZAIM_API_VERSION}/auth/access'
-ZAIM_API_AUTHORIZE_URL: str = f'{ZAIM_API_BASE_URL}/users/auth'
 ZAIM_API_VEFIRY_URL: str = f'{ZAIM_API_BASE_URL}/{ZAIM_API_VERSION}/home/user/verify'
 
 # Money operation
